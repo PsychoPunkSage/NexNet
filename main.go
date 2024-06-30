@@ -17,6 +17,13 @@ func main() {
 
 	fmt.Println("AP is here..")
 
+	go func() {
+		for {
+			msg := <-tr.Consume()
+			fmt.Println("Message: ", msg)
+		}
+	}()
+
 	if err := tr.ListenAndAccept(); err != nil {
 		log.Fatal(err)
 	}
