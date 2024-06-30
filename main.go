@@ -7,7 +7,8 @@ import (
 	"github.com/PsychoPunkSage/NexNet/p2p"
 )
 
-func OnPeer(p2p.Peer) error {
+func OnPeer(peer p2p.Peer) error {
+	peer.Close()
 	fmt.Println("Doing some logic with the peer outside of TCPTransport")
 	return nil
 }
