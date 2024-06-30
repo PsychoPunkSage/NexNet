@@ -89,13 +89,13 @@ func (t *TCPTransport) handleConn(conn net.Conn) {
 
 	peer := NewTCPPeer(conn, true)
 
-	if err := t.HandshakeFunc(peer); err != nil {
+	if err = t.HandshakeFunc(peer); err != nil {
 		fmt.Println("TCP Handshake Error:", err)
 		return
 	}
 
 	if t.OnPeer != nil {
-		if err := t.OnPeer(peer); err != nil {
+		if err = t.OnPeer(peer); err != nil {
 			// fmt.Println("TCP OnPeer Error:", err)
 			return
 		}
@@ -104,8 +104,15 @@ func (t *TCPTransport) handleConn(conn net.Conn) {
 	// Read Loop
 	rpc := RPC{}
 	for {
-		if err := t.Decoder.Decode(conn, &rpc); err != nil {
-			fmt.Println("TCP Error:", err)
+		err = t.Decoder.Decode(conn, &rpc)
+		// fmt.Println(reflect.TypeOf(err))
+		// panic(err)
+		if err == net.ErrClosed {
+			return
+		}
+
+		if err != nil {
+			fmt.Println("TCP READ Error:", err)
 			continue
 		}
 
