@@ -7,9 +7,41 @@ import (
 	"testing"
 )
 
+func TestStore(t *testing.T) {
+	opts := StoreOpts{
+		PathTransformFunc: CASPathTransformFunc,
+	}
+	store := NewStream(opts)
+	key := "myspecialphotos"
+	data := []byte("testing the Store withStream func")
+
+	//  Create
+	if err := store.writeStream(bytes.NewReader(data), key); err != nil {
+		t.Error(err)
+	}
+
+	if ok := store.Has(key); !ok {
+		t.Errorf("Wrong key Passed")
+	}
+
+	// Read
+	r, err := store.Read(key)
+	if err != nil {
+		t.Error(err)
+	}
+
+	b, _ := io.ReadAll(r)
+	if string(b) != string(data) {
+		t.Errorf("want %s got %s", string(b), string(data))
+	}
+
+	// Delete
+	store.Delete(key)
+}
+
 func TestStoreStream(t *testing.T) {
 	opts := StoreOpts{
-		pathTransformFunc: CASPathTransformFunc,
+		PathTransformFunc: CASPathTransformFunc,
 	}
 	store := NewStream(opts)
 	key := "myspecialphotos"
@@ -23,7 +55,7 @@ func TestStoreStream(t *testing.T) {
 
 func TestReadStream(t *testing.T) {
 	opts := StoreOpts{
-		pathTransformFunc: CASPathTransformFunc,
+		PathTransformFunc: CASPathTransformFunc,
 	}
 	store := NewStream(opts)
 	key := "myspecialphotos"
@@ -48,7 +80,7 @@ func TestReadStream(t *testing.T) {
 
 func TestDeleteStream(t *testing.T) {
 	opts := StoreOpts{
-		pathTransformFunc: CASPathTransformFunc,
+		PathTransformFunc: CASPathTransformFunc,
 	}
 	store := NewStream(opts)
 	key := "myspecialphotos"
