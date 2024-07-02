@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"io"
+	"log"
 
 	"github.com/PsychoPunkSage/NexNet/p2p"
 	store "github.com/PsychoPunkSage/NexNet/storage"
@@ -12,6 +13,7 @@ type FileServerOpts struct {
 	StorageRoot       string
 	PathTransformFunc store.PathTransformFunc
 	Transport         p2p.Transport
+	BootstrapNodes    []string
 }
 
 type FileServer struct {
@@ -47,6 +49,8 @@ func (s *FileServer) Start() error {
 		return err
 	}
 
+	s.bootstrapNetwork()
+
 	s.loop()
 
 	return nil
@@ -66,4 +70,21 @@ func (s *FileServer) loop() {
 			return
 		}
 	}
+}
+
+func (s *FileServer) bootstrapNetwork() error {
+	for _, addr := range s.BootstrapNodes {
+		if len(addr) == 0 {
+			// In case of empty string... SKIP
+			continue
+		}
+
+		go func(addr string) {
+			if err := s.Transport.Dial(addr); err != nil {
+				log.Println("Dial error: ", err)
+			}
+		}(addr)
+	}
+
+	return nil
 }

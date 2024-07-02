@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/PsychoPunkSage/NexNet/p2p"
 	"github.com/PsychoPunkSage/NexNet/server"
@@ -17,31 +16,19 @@ func OnPeer(peer p2p.Peer) error {
 }
 
 func main() {
-	// tcpOpts := p2p.TCPTransportOpts{
-	// 	ListenAddr:    ":3000",
-	// 	HandshakeFunc: p2p.NOPHandshakeFunc,
-	// 	Decoder:       p2p.DefaultDecoder{},
-	// 	OnPeer:        OnPeer,
-	// }
-	// tr := p2p.NewTCPTransport(tcpOpts)
+	s := makeServer(":3000", "")
+	s1 := makeServer(":4000", ":3000")
 
-	// fmt.Println("AP is here..")
+	go func() {
+		log.Fatal(s.Start())
+	}()
 
-	// go func() {
-	// 	for {
-	// 		msg := <-tr.Consume()
-	// 		fmt.Println("Message: ", msg)
-	// 	}
-	// }()
+	s1.Start()
+}
 
-	// if err := tr.ListenAndAccept(); err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// select {}
-
+func makeServer(listenAddr string, nodes ...string) *server.FileServer {
 	tcpTransportOpts := p2p.TCPTransportOpts{
-		ListenAddr:    ":3000",
+		ListenAddr:    listenAddr,
 		HandshakeFunc: p2p.NOPHandshakeFunc,
 		Decoder:       p2p.DefaultDecoder{},
 		// TODO: Onpeer func
@@ -49,20 +36,11 @@ func main() {
 	tcpTransport := p2p.NewTCPTransport(tcpTransportOpts)
 
 	fileServerOpts := server.FileServerOpts{
-		ListenAddr:        ":3000",
-		StorageRoot:       "3000_network",
+		StorageRoot:       listenAddr[1:] + "_network",
 		PathTransformFunc: storage.CASPathTransformFunc,
 		Transport:         tcpTransport,
+		BootstrapNodes:    nodes,
 	}
 
-	s := server.NewFileServer(fileServerOpts)
-
-	go func() {
-		time.Sleep(time.Second * 5)
-		s.Stop()
-	}()
-
-	if err := s.Start(); err != nil {
-		log.Fatal(err)
-	}
+	return server.NewFileServer(fileServerOpts)
 }
