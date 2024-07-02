@@ -30,6 +30,16 @@ func (p *TCPPeer) Close() error {
 	return p.conn.Close()
 }
 
+// RemoteAddr : Return remote address of the underlying connection.
+func (p *TCPPeer) RemoteAddr() net.Addr {
+	return p.conn.RemoteAddr()
+}
+
+func (p *TCPPeer) Send(data []byte) error {
+	_, err := p.conn.Write(data)
+	return err
+}
+
 type TCPTransportOpts struct {
 	ListenAddr    string
 	HandshakeFunc HandshakeFunc
