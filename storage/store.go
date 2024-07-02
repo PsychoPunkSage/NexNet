@@ -1,4 +1,4 @@
-package main
+package storage
 
 import (
 	"bytes"
@@ -42,13 +42,13 @@ var DefaultPathTransformFunc = func(key string) PathKey {
 
 func CASPathTransformFunc(key string) PathKey {
 	hash := sha1.Sum([]byte(key))
-	fmt.Println("Hash: ", hash)
+	// fmt.Println("Hash: ", hash)
 	hashStr := hex.EncodeToString(hash[:])
-	fmt.Println("Hash String: ", hashStr)
+	// fmt.Println("Hash String: ", hashStr)
 
 	blocksize := 5
 	sliceLen := len(hashStr) / blocksize
-	fmt.Println("sliceLen: ", sliceLen)
+	// fmt.Println("sliceLen: ", sliceLen)
 	paths := make([]string, sliceLen)
 
 	for i := 0; i < sliceLen; i++ {
@@ -88,10 +88,11 @@ func (s *Store) Has(key string) bool {
 	pathKey := s.PathTransformFunc(key)
 	fullPathWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.FullPath())
 	_, err := os.Stat(fullPathWithRoot)
-	if errors.Is(err, os.ErrNotExist) {
-		return false
-	}
-	return true
+	return !errors.Is(err, os.ErrNotExist)
+}
+
+func (s *Store) Clear() error {
+	return os.RemoveAll(s.Root)
 }
 
 func (s *Store) Delete(key string) error {
@@ -122,6 +123,10 @@ func (s *Store) Read(key string) (io.Reader, error) {
 	_, err = io.Copy(buf, f)
 
 	return buf, err
+}
+
+func (s *Store) Write(r io.Reader, key string) error {
+	return s.writeStream(r, key)
 }
 
 func (s *Store) readStream(key string) (io.ReadCloser, error) {
