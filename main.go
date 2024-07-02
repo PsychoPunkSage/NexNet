@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/PsychoPunkSage/NexNet/p2p"
 	"github.com/PsychoPunkSage/NexNet/server"
@@ -56,9 +57,12 @@ func main() {
 
 	s := server.NewFileServer(fileServerOpts)
 
+	go func() {
+		time.Sleep(time.Second * 5)
+		s.Stop()
+	}()
+
 	if err := s.Start(); err != nil {
 		log.Fatal(err)
 	}
-
-	select {}
 }
