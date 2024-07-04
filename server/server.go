@@ -1,6 +1,8 @@
 package server
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"io"
 	"log"
@@ -9,6 +11,16 @@ import (
 	"github.com/PsychoPunkSage/NexNet/p2p"
 	store "github.com/PsychoPunkSage/NexNet/storage"
 )
+
+// type DataMessage struct {
+// 	Key  string
+// 	Data []byte
+// }
+
+type Message struct {
+	// From    string
+	Payload any
+}
 
 type FileServerOpts struct {
 	StorageRoot       string
@@ -39,6 +51,47 @@ func NewFileServer(opts FileServerOpts) *FileServer {
 		quitCh:         make(chan struct{}),
 		peers:          make(map[string]p2p.Peer),
 	}
+}
+
+func (s *FileServer) StoreData(key string, r io.Reader) error {
+	// // 1. Store the file in the disk
+	// buf := new(bytes.Buffer)
+	// tee := io.TeeReader(r, buf)
+
+	// if err := s.store.Write(tee, key); err != nil {
+	// 	return err
+	// }
+
+	// p := &DataMessage{
+	// 	Key:  key,
+	// 	Data: buf.Bytes(),
+	// }
+
+	// fmt.Println("Buffer:>", buf.Bytes())
+	// fmt.Printf("DataMessage:> %v\n", p)
+
+	// return s.broadcast(&Message{
+	// 	From:    s.Transport.ListenAddress(),
+	// 	Payload: p,
+	// })
+
+	buf := new(bytes.Buffer)
+
+	msg := Message{
+		Payload: []byte("Stoarge key"),
+	}
+
+	if err := gob.NewEncoder(buf).Encode(msg); err != nil {
+		return err
+	}
+
+	for _, peer := range s.peers {
+		if err := peer.Send(buf.Bytes()); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (s *FileServer) Store(key string, r io.Reader) error {
@@ -79,8 +132,16 @@ func (s *FileServer) loop() {
 
 	for {
 		select {
-		case msg := <-s.Transport.Consume():
-			fmt.Println(msg)
+		case rpc := <-s.Transport.Consume():
+			fmt.Println("p1")
+			var msg Message
+			if err := gob.NewDecoder(bytes.NewReader(rpc.Payload)).Decode(&msg); err != nil {
+				log.Println(err)
+			}
+			fmt.Printf("recv: %s", string(msg.Payload.([]byte)))
+			// if err := s.handleMessage(&m); err != nil {
+			// 	log.Fatal(err)
+			// }
 		case <-s.quitCh:
 			return
 		}
@@ -103,3 +164,25 @@ func (s *FileServer) bootstrapNetwork() error {
 
 	return nil
 }
+
+func (s *FileServer) broadcast(msg *Message) error {
+	peers := []io.Writer{}
+	for _, peer := range s.peers {
+		peers = append(peers, peer)
+	}
+
+	multiWriter := io.MultiWriter(peers...)
+	return gob.NewEncoder(multiWriter).Encode(msg)
+}
+
+// func (s *FileServer) handleMessage(msg *Message) error {
+// 	switch t := msg.Payload.(type) {
+// 	case *DataMessage:
+// 		fmt.Printf("Received DataMessage: %v\n", t)
+// 		return nil
+// 		// return s.StoreData(t.Key, bytes.NewReader(t.Data))
+// 	default:
+// 		fmt.Printf("Received unknown message type: %T\n", t)
+// 		return nil
+// 	}
+// }
