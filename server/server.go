@@ -7,15 +7,11 @@ import (
 	"io"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/PsychoPunkSage/NexNet/p2p"
 	store "github.com/PsychoPunkSage/NexNet/storage"
 )
-
-// type DataMessage struct {
-// 	Key  string
-// 	Data []byte
-// }
 
 type Message struct {
 	// From    string
@@ -91,6 +87,15 @@ func (s *FileServer) StoreData(key string, r io.Reader) error {
 		}
 	}
 
+	time.Sleep(time.Second * 3)
+
+	payload := []byte("VERY LARGE FILE CONTENT")
+	for _, peer := range s.peers {
+		if err := peer.Send(payload); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -133,12 +138,28 @@ func (s *FileServer) loop() {
 	for {
 		select {
 		case rpc := <-s.Transport.Consume():
-			fmt.Println("p1")
 			var msg Message
 			if err := gob.NewDecoder(bytes.NewReader(rpc.Payload)).Decode(&msg); err != nil {
 				log.Println(err)
 			}
-			fmt.Printf("recv: %s", string(msg.Payload.([]byte)))
+
+			fmt.Printf("recv: %s\n", string(msg.Payload.([]byte)))
+
+			peer, ok := s.peers[rpc.From.String()]
+			if !ok {
+				panic("peer not found in peers map")
+			}
+
+			fmt.Println("Peer: ", peer.RemoteAddr())
+
+			b := make([]byte, 1000)
+			if _, err := peer.Read(b); err != nil {
+				panic(err)
+			}
+
+			fmt.Printf("Data: %s\n", string(b))
+
+			peer.(*p2p.TCPPeer).Wg.Done()
 			// if err := s.handleMessage(&m); err != nil {
 			// 	log.Fatal(err)
 			// }
