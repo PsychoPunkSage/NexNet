@@ -8,8 +8,6 @@ import (
 type Peer interface {
 	net.Conn
 	Send([]byte) error
-	// RemoteAddr() net.Addr
-	// Close() error
 }
 
 // Transport: Anything that handle communication between node in the Network.
