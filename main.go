@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/PsychoPunkSage/NexNet/p2p"
 	"github.com/PsychoPunkSage/NexNet/server"
@@ -22,8 +24,15 @@ func main() {
 	go func() {
 		log.Fatal(s.Start())
 	}()
+	time.Sleep(1 * time.Second)
 
-	s1.Start()
+	go s1.Start()
+	time.Sleep(1 * time.Second)
+
+	data := bytes.NewReader([]byte("A very big data file"))
+	s1.StoreData("PrivateData1", data)
+
+	select {}
 }
 
 func makeServer(listenAddr string, nodes ...string) *server.FileServer {
