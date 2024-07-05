@@ -148,7 +148,8 @@ func (s *Store) writeStream(r io.Reader, key string) error {
 	if err != nil {
 		return err
 	}
-
+	// When we read from a connection, the conn will not always return a file.
+	// Basically, storage keeps on waiting for new stuffs
 	n, err := io.Copy(f, r)
 	if err != nil {
 		return err
