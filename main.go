@@ -30,7 +30,7 @@ func main() {
 	time.Sleep(1 * time.Second)
 
 	data := bytes.NewReader([]byte("A very big data file"))
-	s1.StoreData("PrivateData1", data)
+	s1.StoreData("PrivateData", data)
 
 	select {}
 }
