@@ -55,12 +55,13 @@ func NewFileServer(opts FileServerOpts) *FileServer {
 
 func (s *FileServer) StoreData(key string, r io.Reader) error {
 	// // 1. Store the file in the disk
-	// buf := new(bytes.Buffer)
-	// tee := io.TeeReader(r, buf)
+	buf := new(bytes.Buffer)
+	tee := io.TeeReader(r, buf)
 
-	// if err := s.store.Write(tee, key); err != nil {
-	// 	return err
-	// }
+	n, err := s.store.Write(tee, key)
+	if err != nil {
+		return err
+	}
 
 	// p := &DataMessage{
 	// 	Key:  key,
@@ -75,38 +76,43 @@ func (s *FileServer) StoreData(key string, r io.Reader) error {
 	// 	Payload: p,
 	// })
 
-	buf := new(bytes.Buffer)
-
 	msg := Message{
 		Payload: MessageStoreFile{
 			Key:  key,
-			Size: 15,
+			Size: n,
 		},
 	}
 
-	if err := gob.NewEncoder(buf).Encode(msg); err != nil {
+	msgBuf := new(bytes.Buffer)
+
+	if err := gob.NewEncoder(msgBuf).Encode(msg); err != nil {
 		return err
 	}
 
 	for _, peer := range s.peers {
-		if err := peer.Send(buf.Bytes()); err != nil {
+		if err := peer.Send(msgBuf.Bytes()); err != nil {
 			return err
 		}
 	}
 
 	time.Sleep(time.Second * 3)
 
-	payload := []byte("VERY LARGE FILE CONTENT")
+	// payload := []byte("VERY LARGE FILE CONTENT")
 	for _, peer := range s.peers {
-		if err := peer.Send(payload); err != nil {
+		// if err := peer.Send(payload); err != nil {
+		// 	return err
+		// }
+		n, err := io.Copy(peer, buf)
+		if err != nil {
 			return err
 		}
+		fmt.Println("recv & written bytes to disk: ", n)
 	}
 
 	return nil
 }
 
-func (s *FileServer) Store(key string, r io.Reader) error {
+func (s *FileServer) Store(key string, r io.Reader) (int64, error) {
 	return s.store.Write(r, key)
 }
 
@@ -225,7 +231,8 @@ func (s *FileServer) handleMessageStoreFile(from string, msg *MessageStoreFile) 
 		return fmt.Errorf("peer {%s} not found", from)
 	}
 
-	if err := s.store.Write(io.LimitReader(peer, msg.Size), msg.Key); err != nil {
+	_, err := s.store.Write(io.LimitReader(peer, msg.Size), msg.Key)
+	if err != nil {
 		return err
 	}
 
