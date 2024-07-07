@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"time"
 
@@ -29,8 +29,19 @@ func main() {
 	go s1.Start()
 	time.Sleep(1 * time.Second)
 
-	data := bytes.NewReader([]byte("A very big data file"))
-	s1.StoreData("PrivateData", data)
+	// data := bytes.NewReader([]byte("A very big data file"))
+	// s1.Store("PrivateData", data)
+
+	r, err := s1.Get("PrivateData")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	b, err := io.ReadAll(r)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("Received: %s\n", b)
 
 	select {}
 }
