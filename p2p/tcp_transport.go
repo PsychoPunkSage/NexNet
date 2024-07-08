@@ -18,20 +18,24 @@ type TCPPeer struct {
 	*/
 	outbound bool
 
-	Wg *sync.WaitGroup
+	wg *sync.WaitGroup
 }
 
 func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
 	return &TCPPeer{
 		Conn:     conn,
 		outbound: outbound,
-		Wg:       &sync.WaitGroup{},
+		wg:       &sync.WaitGroup{},
 	}
 }
 
 func (p *TCPPeer) Send(data []byte) error {
 	_, err := p.Conn.Write(data)
 	return err
+}
+
+func (p *TCPPeer) CloseStream() {
+	p.wg.Done()
 }
 
 type TCPTransportOpts struct {
@@ -149,18 +153,13 @@ func (t *TCPTransport) handleConn(conn net.Conn, outbound bool) {
 		rpc.From = conn.RemoteAddr()
 
 		if rpc.Stream {
-			peer.Wg.Add(1)
+			peer.wg.Add(1)
 			fmt.Printf("[%s] Incoming Stream, waiting...\n", rpc.From)
-			peer.Wg.Wait()
+			peer.wg.Wait()
 			fmt.Printf("[%s] Stream Closed,resuming read loop\n", rpc.From)
 			fmt.Println("=============================================================")
 			continue
 		}
-
-		// if err != nil {
-		// 	fmt.Println("TCP READ Error:", err)
-		// 	continue
-		// }
 
 		t.rpcch <- rpc // pass the received RPC message to another part of the program for further processing.
 	}
