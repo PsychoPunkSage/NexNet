@@ -137,8 +137,8 @@ func (t *TCPTransport) handleConn(conn net.Conn, outbound bool) {
 	}
 
 	// Read Loop
-	rpc := RPC{}
 	for {
+		rpc := RPC{}
 		err = t.Decoder.Decode(conn, &rpc)
 		// fmt.Println(reflect.TypeOf(err))
 		// panic(err)
@@ -146,16 +146,22 @@ func (t *TCPTransport) handleConn(conn net.Conn, outbound bool) {
 			return
 		}
 
-		if err != nil {
-			fmt.Println("TCP READ Error:", err)
+		rpc.From = conn.RemoteAddr()
+
+		if rpc.Stream {
+			peer.Wg.Add(1)
+			fmt.Printf("[%s] Incoming Stream, waiting...\n", rpc.From)
+			peer.Wg.Wait()
+			fmt.Printf("[%s] Stream Closed,resuming read loop\n", rpc.From)
+			fmt.Println("=============================================================")
 			continue
 		}
 
-		rpc.From = conn.RemoteAddr()
-		peer.Wg.Add(1)
-		fmt.Println("Waiting till stream is Done")
+		// if err != nil {
+		// 	fmt.Println("TCP READ Error:", err)
+		// 	continue
+		// }
+
 		t.rpcch <- rpc // pass the received RPC message to another part of the program for further processing.
-		peer.Wg.Wait()
-		fmt.Println("stream Done, continuing normal read loop")
 	}
 }
