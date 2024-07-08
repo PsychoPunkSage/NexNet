@@ -74,6 +74,17 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 		return nil, err
 	}
 
+	for _, peer := range s.peers {
+		fileBuf := new(bytes.Buffer)
+		n, err := io.Copy(fileBuf, peer)
+		if err != nil {
+			return nil, err
+		}
+
+		fmt.Printf("Received (%d) bytes ove the network\n", n)
+		fmt.Println(fileBuf.String())
+	}
+
 	select {}
 
 	// panic("dont have this file")
@@ -110,11 +121,12 @@ func (s *FileServer) Store(key string, r io.Reader) error {
 		},
 	}
 
+	// Broadcast the FileKey and FileSize to be stored.
 	if err = s.broadcast(&msg); err != nil {
 		return err
 	}
 
-	time.Sleep(time.Second * 3)
+	time.Sleep(5 * time.Millisecond)
 
 	// payload := []byte("VERY LARGE FILE CONTENT")
 	////// USE multiwriter here.
@@ -122,6 +134,7 @@ func (s *FileServer) Store(key string, r io.Reader) error {
 		// if err := peer.Send(payload); err != nil {
 		// 	return err
 		// }
+		peer.Send([]byte{p2p.IncomingStream}) // About to Stream FileStorage Payload.
 		n, err := io.Copy(peer, fileBuffer)
 		if err != nil {
 			return err
@@ -173,12 +186,12 @@ func (s *FileServer) loop() {
 		case rpc := <-s.Transport.Consume():
 			var msg Message
 			if err := gob.NewDecoder(bytes.NewReader(rpc.Payload)).Decode(&msg); err != nil {
-				log.Println(err)
+				log.Println("decodeing err:", err)
 			}
 
 			if err := s.handleMessage(rpc.From.String(), &msg); err != nil {
-				log.Println(err)
-				return
+				log.Println("handleMessage err:", err)
+				// return
 			}
 
 			// fmt.Printf("recv: %s\n", string(msg.Payload.([]byte)))
@@ -238,6 +251,7 @@ func (s *FileServer) broadcast(msg *Message) error {
 	}
 
 	for _, peer := range s.peers {
+		peer.Send([]byte{p2p.IncomingMessage}) // Cause we are sending message.
 		if err := peer.Send(buf.Bytes()); err != nil {
 			return err
 		}
@@ -270,9 +284,9 @@ func (s *FileServer) handleMessageStoreFile(from string, msg *MessageStoreFile) 
 		return err
 	}
 
-	log.Printf("Written (%d) bytes to disk\n", n)
+	log.Printf("[%s] Written (%d) bytes to disk\n", s.Transport.ListenAddress(), n)
 
-	peer.(*p2p.TCPPeer).Wg.Done()
+	peer.(*p2p.TCPPeer).Wg.Done() // Streaming is OVER!!
 
 	return nil
 }
