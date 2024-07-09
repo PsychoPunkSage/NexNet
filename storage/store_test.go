@@ -17,7 +17,7 @@ func TestStore(t *testing.T) {
 		data := []byte("testing the Store withStream func")
 
 		//  Create
-		if err := store.writeStream(bytes.NewReader(data), key); err != nil {
+		if _, err := store.writeStream(bytes.NewReader(data), key); err != nil {
 			t.Error(err)
 		}
 
@@ -26,7 +26,7 @@ func TestStore(t *testing.T) {
 		}
 
 		// Read
-		r, err := store.Read(key)
+		_, r, err := store.Read(key)
 		if err != nil {
 			t.Error(err)
 		}
@@ -56,7 +56,7 @@ func TestStoreStream(t *testing.T) {
 	data := []byte("testing the Store withStream func")
 
 	//  Create
-	if err := store.writeStream(bytes.NewReader(data), key); err != nil {
+	if _, err := store.writeStream(bytes.NewReader(data), key); err != nil {
 		t.Error(err)
 	}
 }
@@ -70,12 +70,12 @@ func TestReadStream(t *testing.T) {
 	data := []byte("testing the Store withStream func")
 
 	// Create
-	if err := store.writeStream(bytes.NewReader(data), key); err != nil {
+	if _, err := store.writeStream(bytes.NewReader(data), key); err != nil {
 		t.Error(err)
 	}
 
 	// Read
-	r, err := store.Read(key)
+	_, r, err := store.Read(key)
 	if err != nil {
 		t.Error(err)
 	}
@@ -95,7 +95,7 @@ func TestDeleteStream(t *testing.T) {
 	data := []byte("testing the Store withStream func")
 
 	// Create
-	if err := store.writeStream(bytes.NewReader(data), key); err != nil {
+	if _, err := store.writeStream(bytes.NewReader(data), key); err != nil {
 		t.Error(err)
 	}
 

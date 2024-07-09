@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
@@ -111,28 +110,29 @@ func (s *Store) Delete(key string) error {
 	return nil
 }
 
-func (s *Store) Read(key string) (io.Reader, error) {
-	f, err := s.readStream(key)
-	if err != nil {
-		return nil, err
-	}
-
-	defer f.Close()
-
-	buf := new(bytes.Buffer)
-	_, err = io.Copy(buf, f)
-
-	return buf, err
+func (s *Store) Read(key string) (int64, io.Reader, error) {
+	return s.readStream(key)
 }
 
 func (s *Store) Write(r io.Reader, key string) (int64, error) {
 	return s.writeStream(r, key)
 }
 
-func (s *Store) readStream(key string) (io.ReadCloser, error) {
+func (s *Store) readStream(key string) (int64, io.ReadCloser, error) {
 	pathKey := s.PathTransformFunc(key)
 	fullPathKeyWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.FullPath())
-	return os.Open(fullPathKeyWithRoot)
+
+	file, err := os.Open(fullPathKeyWithRoot)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	fi, err := file.Stat()
+	if err != nil {
+		return 0, nil, err
+	}
+
+	return fi.Size(), file, nil
 }
 
 func (s *Store) writeStream(r io.Reader, key string) (int64, error) {
