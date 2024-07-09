@@ -10,9 +10,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/PsychoPunkSage/NexNet/cryptography"
 	"github.com/PsychoPunkSage/NexNet/p2p"
 	store "github.com/PsychoPunkSage/NexNet/storage"
 )
+
+const PrependSig int64 = 16
 
 type Message struct {
 	Payload any
@@ -28,6 +31,7 @@ type MessageGetFile struct {
 }
 
 type FileServerOpts struct {
+	EncKey            []byte
 	StorageRoot       string
 	PathTransformFunc store.PathTransformFunc
 	Transport         p2p.Transport
@@ -128,7 +132,7 @@ func (s *FileServer) Store(key string, r io.Reader) error {
 	msg := Message{
 		Payload: MessageStoreFile{
 			Key:  key,
-			Size: n,
+			Size: n + PrependSig,
 		},
 	}
 
@@ -146,7 +150,7 @@ func (s *FileServer) Store(key string, r io.Reader) error {
 		// 	return err
 		// }
 		peer.Send([]byte{p2p.IncomingStream}) // About to Stream FileStorage Payload.
-		n, err := io.Copy(peer, fileBuffer)
+		n, err := cryptography.CopyEncrypt(s.EncKey, fileBuffer, peer)
 		if err != nil {
 			return err
 		}
