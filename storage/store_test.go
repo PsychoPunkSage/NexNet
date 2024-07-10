@@ -12,21 +12,22 @@ func TestStore(t *testing.T) {
 	store := newStore()
 	defer teardown(t, store)
 
+	id := "PPS"
 	for i := 0; i < 50; i++ {
 		key := fmt.Sprintf("myspecialphotos_%d", i)
 		data := []byte("testing the Store withStream func")
 
 		//  Create
-		if _, err := store.writeStream(bytes.NewReader(data), key); err != nil {
+		if _, err := store.writeStream(bytes.NewReader(data), id, key); err != nil {
 			t.Error(err)
 		}
 
-		if ok := store.Has(key); !ok {
+		if ok := store.Has(id, key); !ok {
 			t.Errorf("Wrong key Passed")
 		}
 
 		// Read
-		_, r, err := store.Read(key)
+		_, r, err := store.Read(id, key)
 		if err != nil {
 			t.Error(err)
 		}
@@ -37,11 +38,11 @@ func TestStore(t *testing.T) {
 		}
 
 		// Delete
-		if err = store.Delete(key); err != nil {
+		if err = store.Delete(id, key); err != nil {
 			t.Error(err)
 		}
 
-		if ok := store.Has(key); ok {
+		if ok := store.Has(id, key); ok {
 			t.Errorf("Expected to NOT have the key: %s", key)
 		}
 	}
@@ -51,12 +52,13 @@ func TestStoreStream(t *testing.T) {
 	opts := StoreOpts{
 		PathTransformFunc: CASPathTransformFunc,
 	}
+	id := "PPS"
 	store := NewStream(opts)
 	key := "myspecialphotos"
 	data := []byte("testing the Store withStream func")
 
 	//  Create
-	if _, err := store.writeStream(bytes.NewReader(data), key); err != nil {
+	if _, err := store.writeStream(bytes.NewReader(data), id, key); err != nil {
 		t.Error(err)
 	}
 }
@@ -65,17 +67,18 @@ func TestReadStream(t *testing.T) {
 	opts := StoreOpts{
 		PathTransformFunc: CASPathTransformFunc,
 	}
+	id := "PPS"
 	store := NewStream(opts)
 	key := "myspecialphotos"
 	data := []byte("testing the Store withStream func")
 
 	// Create
-	if _, err := store.writeStream(bytes.NewReader(data), key); err != nil {
+	if _, err := store.writeStream(bytes.NewReader(data), id, key); err != nil {
 		t.Error(err)
 	}
 
 	// Read
-	_, r, err := store.Read(key)
+	_, r, err := store.Read(id, key)
 	if err != nil {
 		t.Error(err)
 	}
@@ -90,16 +93,17 @@ func TestDeleteStream(t *testing.T) {
 	opts := StoreOpts{
 		PathTransformFunc: CASPathTransformFunc,
 	}
+	id := "PPS"
 	store := NewStream(opts)
 	key := "myspecialphotos"
 	data := []byte("testing the Store withStream func")
 
 	// Create
-	if _, err := store.writeStream(bytes.NewReader(data), key); err != nil {
+	if _, err := store.writeStream(bytes.NewReader(data), id, key); err != nil {
 		t.Error(err)
 	}
 
-	err := store.Delete(key)
+	err := store.Delete(id, key)
 	if err != nil && !os.IsNotExist(err) {
 		t.Error(err)
 	}
