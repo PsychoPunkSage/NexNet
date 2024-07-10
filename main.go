@@ -22,36 +22,47 @@ func OnPeer(peer p2p.Peer) error {
 func main() {
 	s := makeServer(":3000", "")
 	s1 := makeServer(":4000", ":3000")
+	s2 := makeServer(":5000", ":4000", ":3000")
 
 	go func() {
 		log.Fatal(s.Start())
 	}()
 	time.Sleep(1 * time.Second)
 
-	go s1.Start()
+	go func() {
+		log.Fatal(s1.Start())
+	}()
+	time.Sleep(1 * time.Second)
+
+	go s2.Start()
 	time.Sleep(1 * time.Second)
 
 	for i := 0; i < 10; i++ {
-		data := bytes.NewReader([]byte(fmt.Sprintf("A very big data file %d", i)))
-		s1.Store(fmt.Sprintf("PrivateData%d", i), data)
+		key := fmt.Sprintf("PrivateData%d", i)
+		payload := fmt.Sprintf("A very big data file %d", i)
+
+		// Make file
+		data := bytes.NewReader([]byte(payload))
+		s2.Store(key, data)
 		time.Sleep(5 * time.Millisecond)
-	}
 
-	key := "PrivateData1"
-	if err := s1.Remove(key); err != nil {
-		log.Fatal(err)
-	}
+		// Remove that file
+		if err := s2.Remove(key); err != nil {
+			log.Fatal(err)
+		}
 
-	r, err := s1.Get(key)
-	if err != nil {
-		log.Fatal(err)
-	}
+		// Get that file from other networks
+		r, err := s2.Get(key)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	b, err := io.ReadAll(r)
-	if err != nil {
-		log.Fatal(err)
+		b, err := io.ReadAll(r)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("Received: %s\n", b)
 	}
-	fmt.Printf("Received: %s\n", b)
 
 	select {}
 }
