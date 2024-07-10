@@ -120,6 +120,10 @@ func (s *Store) Write(r io.Reader, key string) (int64, error) {
 	return s.writeStream(r, key)
 }
 
+func (s *Store) WriteDecrypt(encKey []byte, r io.Reader, key string) (int64, error) {
+	return s.writeDecryptStream(encKey, r, key)
+}
+
 func (s *Store) readStream(key string) (int64, io.ReadCloser, error) {
 	pathKey := s.PathTransformFunc(key)
 	fullPathKeyWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.FullPath())
@@ -137,16 +141,8 @@ func (s *Store) readStream(key string) (int64, io.ReadCloser, error) {
 	return fi.Size(), file, nil
 }
 
-func (s *Store) WriteDecryptStream(encKey []byte, r io.Reader, key string) (int64, error) {
-	pathkey := s.PathTransformFunc(key)
-	pathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathkey.PathName)
-	if err := os.MkdirAll(pathNameWithRoot, os.ModePerm); err != nil {
-		return 0, err
-	}
-
-	fullPathWithRoot := fmt.Sprintf("%s/%s", s.Root, pathkey.FullPath())
-
-	f, err := os.Create(fullPathWithRoot)
+func (s *Store) writeDecryptStream(encKey []byte, r io.Reader, key string) (int64, error) {
+	f, err := s.openFileForWriting(key)
 	if err != nil {
 		return 0, err
 	}
@@ -160,19 +156,23 @@ func (s *Store) WriteDecryptStream(encKey []byte, r io.Reader, key string) (int6
 }
 
 func (s *Store) writeStream(r io.Reader, key string) (int64, error) {
-	pathkey := s.PathTransformFunc(key)
-	pathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathkey.PathName)
-	if err := os.MkdirAll(pathNameWithRoot, os.ModePerm); err != nil {
-		return 0, err
-	}
-
-	fullPathWithRoot := fmt.Sprintf("%s/%s", s.Root, pathkey.FullPath())
-
-	f, err := os.Create(fullPathWithRoot)
+	f, err := s.openFileForWriting(key)
 	if err != nil {
 		return 0, err
 	}
 	// When we read from a connection, the conn will not always return a file.
 	// Basically, storage keeps on waiting for new stuffs
 	return io.Copy(f, r)
+}
+
+func (s *Store) openFileForWriting(key string) (*os.File, error) {
+	pathkey := s.PathTransformFunc(key)
+	pathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathkey.PathName)
+	if err := os.MkdirAll(pathNameWithRoot, os.ModePerm); err != nil {
+		return nil, err
+	}
+
+	fullPathWithRoot := fmt.Sprintf("%s/%s", s.Root, pathkey.FullPath())
+
+	return os.Create(fullPathWithRoot)
 }
