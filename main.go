@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"time"
 
@@ -36,16 +37,21 @@ func main() {
 		time.Sleep(5 * time.Millisecond)
 	}
 
-	// r, err := s1.Get("PrivateData1")
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
+	key := "PrivateData1"
+	if err := s1.Remove(key); err != nil {
+		log.Fatal(err)
+	}
 
-	// b, err := io.ReadAll(r)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// fmt.Printf("Received: %s\n", b)
+	r, err := s1.Get(key)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	b, err := io.ReadAll(r)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("Received: %s\n", b)
 
 	select {}
 }
