@@ -149,17 +149,28 @@ func (s *FileServer) Store(key string, r io.Reader) error {
 
 	// payload := []byte("VERY LARGE FILE CONTENT")
 	////// USE multiwriter here.
+	peers := []io.Writer{}
 	for _, peer := range s.peers {
-		// if err := peer.Send(payload); err != nil {
-		// 	return err
-		// }
-		peer.Send([]byte{p2p.IncomingStream}) // About to Stream FileStorage Payload.
-		n, err := cryptography.CopyEncrypt(s.EncKey, fileBuffer, peer)
-		if err != nil {
-			return err
-		}
-		fmt.Println("recv & written bytes to disk: ", n)
+		peers = append(peers, peer)
 	}
+	mw := io.MultiWriter(peers...)
+	mw.Write([]byte{p2p.IncomingStream})
+	nn, err := cryptography.CopyEncrypt(s.EncKey, fileBuffer, mw)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("[%s] recv & written (%d) bytes to disk\n", s.Transport.ListenAddress(), nn)
+
+	// for _, peer := range s.peers {
+	// 	// if err := peer.Send(payload); err != nil {
+	// 	// 	return err
+	// 	// }
+	// 	peer.Send([]byte{p2p.IncomingStream}) // About to Stream FileStorage Payload.
+	// 	n, err := cryptography.CopyEncrypt(s.EncKey, fileBuffer, peer)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
 
 	return nil
 }
@@ -239,6 +250,7 @@ func (s *FileServer) bootstrapNetwork() error {
 		}
 
 		go func(addr string) {
+			fmt.Printf("[%s] attempting to connect with <%s>\n", s.Transport.ListenAddress(), addr)
 			if err := s.Transport.Dial(addr); err != nil {
 				log.Println("Dial error: ", err)
 			}
@@ -248,15 +260,15 @@ func (s *FileServer) bootstrapNetwork() error {
 	return nil
 }
 
-func (s *FileServer) stream(msg *Message) error {
-	peers := []io.Writer{}
-	for _, peer := range s.peers {
-		peers = append(peers, peer)
-	}
+// func (s *FileServer) stream(msg *Message) error {
+// 	peers := []io.Writer{}
+// 	for _, peer := range s.peers {
+// 		peers = append(peers, peer)
+// 	}
 
-	multiWriter := io.MultiWriter(peers...)
-	return gob.NewEncoder(multiWriter).Encode(msg)
-}
+// 	multiWriter := io.MultiWriter(peers...)
+// 	return gob.NewEncoder(multiWriter).Encode(msg)
+// }
 
 func (s *FileServer) broadcast(msg *Message) error {
 	buf := new(bytes.Buffer)
