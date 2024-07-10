@@ -9,6 +9,8 @@ import (
 	"log"
 	"os"
 	"strings"
+
+	"github.com/PsychoPunkSage/NexNet/cryptography"
 )
 
 const defaultRootFolderName = "PPSNetwork"
@@ -135,6 +137,28 @@ func (s *Store) readStream(key string) (int64, io.ReadCloser, error) {
 	return fi.Size(), file, nil
 }
 
+func (s *Store) WriteDecryptStream(encKey []byte, r io.Reader, key string) (int64, error) {
+	pathkey := s.PathTransformFunc(key)
+	pathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathkey.PathName)
+	if err := os.MkdirAll(pathNameWithRoot, os.ModePerm); err != nil {
+		return 0, err
+	}
+
+	fullPathWithRoot := fmt.Sprintf("%s/%s", s.Root, pathkey.FullPath())
+
+	f, err := os.Create(fullPathWithRoot)
+	if err != nil {
+		return 0, err
+	}
+
+	n, err := cryptography.CopyDecrypt(encKey, r, f)
+	if err != nil {
+		return 0, err
+	}
+
+	return int64(n), nil
+}
+
 func (s *Store) writeStream(r io.Reader, key string) (int64, error) {
 	pathkey := s.PathTransformFunc(key)
 	pathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathkey.PathName)
@@ -150,10 +174,5 @@ func (s *Store) writeStream(r io.Reader, key string) (int64, error) {
 	}
 	// When we read from a connection, the conn will not always return a file.
 	// Basically, storage keeps on waiting for new stuffs
-	n, err := io.Copy(f, r)
-	if err != nil {
-		return 0, err
-	}
-
-	return n, nil
+	return io.Copy(f, r)
 }

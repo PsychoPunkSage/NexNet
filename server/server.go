@@ -94,7 +94,7 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 		var size int64
 		binary.Read(peer, binary.LittleEndian, &size)
 		// To Store Incoming File in the Calling Network.
-		n, err := s.store.Write(io.LimitReader(peer, size), key)
+		n, err := s.store.WriteDecryptStream(s.EncKey, io.LimitReader(peer, size), key)
 		if err != nil {
 			return nil, err
 		}
@@ -105,6 +105,10 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 
 	_, r, err := s.store.Read(key)
 	return r, err
+}
+
+func (s *FileServer) Remove(key string) error {
+	return s.store.Delete(key)
 }
 
 func (s *FileServer) Store(key string, r io.Reader) error {
