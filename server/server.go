@@ -22,15 +22,18 @@ type Message struct {
 }
 
 type MessageStoreFile struct {
+	ID   string
 	Key  string
 	Size int64
 }
 
 type MessageGetFile struct {
+	ID  string
 	Key string
 }
 
 type FileServerOpts struct {
+	ID                string
 	EncKey            []byte
 	StorageRoot       string
 	PathTransformFunc store.PathTransformFunc
@@ -54,6 +57,10 @@ func NewFileServer(opts FileServerOpts) *FileServer {
 		PathTransformFunc: opts.PathTransformFunc,
 	}
 
+	if len(opts.ID) == 0 {
+		opts.ID = cryptography.GenerateId()
+	}
+
 	return &FileServer{
 		FileServerOpts: opts,
 		store:          store.NewStream(storeOpts),
@@ -63,9 +70,9 @@ func NewFileServer(opts FileServerOpts) *FileServer {
 }
 
 func (s *FileServer) Get(key string) (io.Reader, error) {
-	if s.store.Has(key) {
+	if s.store.Has(s.ID, key) {
 		fmt.Printf("[%s] serving file (%s) from local disk\n", s.Transport.ListenAddress(), key)
-		_, r, err := s.store.Read(key)
+		_, r, err := s.store.Read(s.ID, key)
 		return r, err
 	}
 
@@ -73,7 +80,8 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 
 	msg := Message{
 		Payload: MessageGetFile{
-			Key: key,
+			ID:  s.ID,
+			Key: cryptography.HashKey(key),
 		},
 	}
 
@@ -94,7 +102,7 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 		var size int64
 		binary.Read(peer, binary.LittleEndian, &size)
 		// To Store Incoming File in the Calling Network.
-		n, err := s.store.WriteDecrypt(s.EncKey, io.LimitReader(peer, size), key)
+		n, err := s.store.WriteDecrypt(s.EncKey, io.LimitReader(peer, size), s.ID, key)
 		if err != nil {
 			return nil, err
 		}
@@ -103,12 +111,12 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 		peer.CloseStream()
 	}
 
-	_, r, err := s.store.Read(key)
+	_, r, err := s.store.Read(s.ID, key)
 	return r, err
 }
 
 func (s *FileServer) Remove(key string) error {
-	return s.store.Delete(key)
+	return s.store.Delete(s.ID, key)
 }
 
 func (s *FileServer) Store(key string, r io.Reader) error {
@@ -117,7 +125,7 @@ func (s *FileServer) Store(key string, r io.Reader) error {
 		tee        = io.TeeReader(r, fileBuffer)
 	)
 
-	n, err := s.store.Write(tee, key)
+	n, err := s.store.Write(tee, s.ID, key)
 	if err != nil {
 		return err
 	}
@@ -135,7 +143,8 @@ func (s *FileServer) Store(key string, r io.Reader) error {
 
 	msg := Message{
 		Payload: MessageStoreFile{
-			Key:  key,
+			ID:   s.ID,
+			Key:  cryptography.HashKey(key),
 			Size: n + PrependSig,
 		},
 	}
@@ -306,7 +315,7 @@ func (s *FileServer) handleMessageStoreFile(from string, msg *MessageStoreFile) 
 		return fmt.Errorf("peer {%s} not found", from)
 	}
 
-	n, err := s.store.Write(io.LimitReader(peer, msg.Size), msg.Key)
+	n, err := s.store.Write(io.LimitReader(peer, msg.Size), msg.ID, msg.Key)
 	if err != nil {
 		return err
 	}
@@ -321,13 +330,13 @@ func (s *FileServer) handleMessageStoreFile(from string, msg *MessageStoreFile) 
 func (s *FileServer) handleMessageGetFile(from string, msg *MessageGetFile) error {
 	fmt.Printf("Received Message: %v\n", msg)
 
-	if !s.store.Has(msg.Key) {
+	if !s.store.Has(msg.ID, msg.Key) {
 		return fmt.Errorf("[%s] file (%s) not found", s.Transport.ListenAddress(), msg.Key)
 	}
 
 	fmt.Printf("[%s] serving file (%s) over the network\n", s.Transport.ListenAddress(), msg.Key)
 
-	size, r, err := s.store.Read(msg.Key)
+	size, r, err := s.store.Read(msg.ID, msg.Key)
 	if err != nil {
 		return err
 	}
