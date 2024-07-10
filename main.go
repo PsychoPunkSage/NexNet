@@ -47,9 +47,9 @@ func main() {
 		time.Sleep(5 * time.Millisecond)
 
 		// Remove that file
-		if err := s2.Remove(key); err != nil {
-			log.Fatal(err)
-		}
+		// if err := s2.Remove(key); err != nil {
+		// 	log.Fatal(err)
+		// }
 
 		// Get that file from other networks
 		r, err := s2.Get(key)
@@ -62,6 +62,11 @@ func main() {
 			log.Fatal(err)
 		}
 		fmt.Printf("Received: %s\n", b)
+	}
+
+	if err := s2.Remove("PrivateData2"); err != nil {
+		fmt.Println("Unable to remove")
+		log.Fatal(err)
 	}
 
 	select {}
