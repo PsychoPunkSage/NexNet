@@ -44,3 +44,19 @@ git remote set-url --push upstream no_push
 # upstream  no_push (push)
 git remote -v
 ```
+### Step 3: Run the Program
+
+> Build the project
+```sh
+make build
+```
+
+> Run the project (It will build the project first)
+```sh
+make run
+```
+
+> Run test cases
+```sh
+make test
+```
