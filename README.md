@@ -60,3 +60,5 @@ make run
 ```sh
 make test
 ```
+
+## PROJECT IS UNDER DEVELOPMENT MORE DETTAILS WILL BE ADDED SOON :)
